@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- help requester -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link rel="stylesheet" type="text/css" href="stylesheet.css" />
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/2.2.3/jquery.min.js"></script>
+
+    	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
+   integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+   crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+   integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
+   crossorigin=""></script>
+    <link rel="stylesheet" type="text/css" href="stylesheet.css" />
+
+
+
+    <title>MHS Input</title>
+</head>
+<body>
+<script type="text/javascript">
+    class  Hilfesuchender {
+        constructor() {
+            this.nn = "Default";
+            this.vn = "Default";
+            this.long = 0.0;
+            this.lat = 0.0;
+            this.dringlichkeit=0;
+            this.hilfeart = "";
+        }
+    }
+
+    onload = (function () {
+        initMap();
+
+    });
+
+
+    var hilfeS = new Hilfesuchender();
+
+    function senden(){
+        hilfeS.vn = encodeURI(document.getElementById('vn').value);
+        hilfeS.nn = encodeURI(document.getElementById('nn').value);
+        hilfeS.dringlichkeit = document.getElementById('dringlichkeit').value;
+        hilfeS.hilfeart = document.getElementById('hilfeart').value;
+        var tmplong = document.getElementById('long').value;
+        var tmplat = document.getElementById('lat').value;
+        window.document.forms[0].reset();
+
+        if((tmplong == "") || (tmplat == "")){
+            getLocation();
+        } else {
+            hilfeS.long = tmplong;
+            hilfeS.lat = tmplat;
+
+            ajaxSend();
+        }
+    }
+
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(takePosition);
+        } else {
+            setUserInstruction( "Geolocation is not supported by this browser.");
+            console.log("Geolocation is not supported by this browser.");
+        }
+    }
+
+    function takePosition(position) {
+        hilfeS.lat =  position.coords.latitude;
+        hilfeS.long = position.coords.longitude;
+        console.log("in takePosition lon = "+hilfeS.long+" Lat = "+hilfeS.lat);
+        ajaxSend();
+    }
+
+    function ajaxSend () {
+        $.ajax({
+            url: ('ajaxSendProgHilfesuchender.php'),
+            data: { 'vn': hilfeS.vn,
+                    'nn': hilfeS.nn,
+                    'dringlichkeit':hilfeS.dringlichkeit,
+                    'long':hilfeS.long,
+                    'lat': hilfeS.lat,
+                    'hilfeart':hilfeS.hilfeart
+                },
+            type: 'GET',
+            timeout: 1000,
+            dataType: 'json',
+            error: ajaxSendError,
+            success: ajaxSendSuccess
+
+        })
+    }
+    function ajaxSendSuccess (data) {
+        setUserInstruction(data.message);
+        outputMyData();
+    }
+    function ajaxSendError (data) {
+        setUserInstruction("Fehler beim Speichern");
+    }
+
+    function setUserInstruction(userInstructionString){
+        document.getElementById("userInstruction").innerHTML = userInstructionString;
+    }
+
+
+
+    function outputMyData () {
+
+
+        var output = "<p >";
+        output +=  ""+hilfeS.vn + '  '+ hilfeS.nn + '  -  Benötigte Hilfe: '+ hilfeS.hilfeart+'</br>';
+        output += '</p >';
+
+        document.getElementById("messageContent").innerHTML = output;
+
+        makeMap();
+    }
+
+
+    var greenMarker;
+    var yellowMarker
+    var redMarker;
+
+    function initMarkers () {
+        greenMarker = new L.Icon({
+		    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        yellowMarker = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        redMarker = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+    }
+
+    var map;
+    var markerLayer = null;
+    function initMap(){
+		map = L.map('map', {
+			center: [50, 9],
+			zoom: 5
+		});
+		L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			attribution: '&copy; OpenStreetMap contributors'
+		}).addTo(map);
+
+
+
+    }
+    function makeMap(){
+            var features = [];
+
+            var meanLat = 0.0;
+            var meanLong = 0.0;
+            if (markerLayer == null){
+                markerLayer = L.layerGroup();
+            }else {
+                markerLayer.clearLayers ()
+            }
+
+            initMarkers();
+            var markerType = greenMarker; // Default
+
+
+            if(hilfeS.dringlichkeit == 0 ) markerType = redMarker;
+            if(hilfeS.dringlichkeit == 1 ) markerType = yellowMarker;
+            if(hilfeS.dringlichkeit == 2 ) markerType = greenMarker;
+
+            marker = new L.marker([hilfeS.lat, hilfeS.long], {
+                        clickable: true,
+                        icon: markerType,
+                        })
+
+                            .bindPopup('<p ><b>' + hilfeS.vn + '   '+ hilfeS.nn + '</br> Benötigte Hilfe: '+hilfeS.hilfeart+ ' </p>')
+                            .addTo(markerLayer);
+                        features.push(marker);
+
+
+
+            map.addLayer(markerLayer);
+
+            var group = new L.featureGroup(features);
+        }
+
+</script>
+
+   <div class="app">
+
+      <h3>Input <i>MHS</i>  </h3>
+      <div class="backinput_container"><a class="backinput" href="MHS-portal.html">Back to Portal</a></div>
+      <div id="map"> </div>
+
+       <div class="data_container">
+          <div class="InputForm">
+          <form>
+              <table>
+              <tr><td>Vorname:</td><td><input type="text" value="Max" id="vn"></td></tr>
+              <tr><td>Nachname:</td><td><input type="text" value="Mustermann" id="nn"></td></tr>
+              <tr><td>Long:</td><td><input type="text" id="long"></td></tr>
+              <tr><td>Lat:</td><td><input type="text" id="lat"></td></tr>
+              <tr><td>Hilfeart:</td><td><input type="text" value="Garten" id="hilfeart"></td></tr>
+              <tr><td>Dringlichkeit:</td><td><input type="text" value="0" id="dringlichkeit"></td></tr>
+              <tr><td><input type="button" value="Speichern"  onclick="senden()"></td>
+              <td><input type="reset" value="Zurücksetzen"></td></tr>
+              </table>
+              </form>
+          </div>
+
+
+
+
+      <div class="list">
+          <h3>Dein Input </h3>
+          <div id="messageContent"><!--Hier kommen die Messages hin--></div>
+
+        </div>
+        <h4 id="userInstruction"></h4>
+
+      </div>
+ </div>
+</body>
+</html>
