@@ -3,5 +3,5 @@ Full stack PHP app, mange buyers and suppliers requests and render the data on m
 
 ![screenshot supplier dashboard1](map1.JPG)
 ![screenshot supplier dashboard](screenshot.JPG)
-
+![screenshot map](mapscreen.JPG)
 
